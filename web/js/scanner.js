@@ -2,10 +2,6 @@
 // vendor/zxing.min.js (ZXing, Apache-2.0) をオフラインでも使えるようローカルに
 // 同梱している(index.htmlで<script>読み込み → グローバル `ZXing`)。
 
-export function isSupported() {
-  return Boolean(navigator.mediaDevices?.getUserMedia) && typeof window.ZXing !== "undefined";
-}
-
 /**
  * 指定した <video> にカメラ映像を流し、バーコードを検出したら onScan を呼ぶ。
  * @param {HTMLVideoElement} videoElement
@@ -13,8 +9,15 @@ export function isSupported() {
  * @returns {Promise<() => void>} 呼び出すとカメラを停止する関数
  */
 export async function startScanning(videoElement, onScan) {
-  if (!isSupported()) {
-    throw new Error("このブラウザはバーコードスキャンに対応していません");
+  if (!navigator.mediaDevices?.getUserMedia) {
+    const err = new Error("このブラウザ・端末ではカメラAPI(getUserMedia)が利用できません");
+    err.name = "UnsupportedError";
+    throw err;
+  }
+  if (typeof window.ZXing === "undefined") {
+    const err = new Error("バーコード読み取りライブラリの読み込みに失敗しました。ページを再読み込みしてください。");
+    err.name = "LibraryLoadError";
+    throw err;
   }
 
   const hints = new Map();
@@ -27,13 +30,20 @@ export async function startScanning(videoElement, onScan) {
   // 注意: このバージョンの decodeFromConstraints は停止用の値を返さない
   // (undefined を返す)。停止はインスタンス自身の reset() で行う
   // (内部でカメラストリームの停止まで行ってくれる)。
+  //
+  // facingMode は ideal で指定する(exact/裸文字列だと背面カメラが無い・
+  // 認識できない端末で OverconstrainedError になることがあるため)。
   let hasScanned = false;
-  await reader.decodeFromConstraints({ video: { facingMode: "environment" } }, videoElement, (result) => {
-    if (result && !hasScanned) {
-      hasScanned = true;
-      onScan(result.getText());
+  await reader.decodeFromConstraints(
+    { video: { facingMode: { ideal: "environment" } }, audio: false },
+    videoElement,
+    (result) => {
+      if (result && !hasScanned) {
+        hasScanned = true;
+        onScan(result.getText());
+      }
     }
-  });
+  );
 
   return () => {
     try {
