@@ -19,7 +19,9 @@ async function search(query) {
   const params = new URLSearchParams({ q: query, maxResults: "20", country: "JP" });
   const response = await fetch(`${BASE_URL}?${params.toString()}`);
   if (!response.ok) {
-    throw new Error(`Google Books request failed: ${response.status}`);
+    const err = new Error(`Google Books request failed: ${response.status}`);
+    err.status = response.status;
+    throw err;
   }
   const json = await response.json();
   const items = Array.isArray(json.items) ? json.items : [];

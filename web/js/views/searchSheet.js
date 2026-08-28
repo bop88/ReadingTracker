@@ -2,37 +2,62 @@ import { openSheet } from "./sheet.js";
 import { searchByKeyword } from "../googleBooks.js";
 import { escapeHTML, bindActivate } from "../utils.js";
 
+const DEBOUNCE_MS = 500;
+
 /**
  * タイトル・著者・ISBNでの手動検索画面。
  * openBDは全文検索非対応のため、Google Books APIのみを使用する。
+ *
+ * 検索の実行は3通りに対応する(モバイルの仮想キーボードでEnterキー相当の
+ * 挙動が確実に拾えないケースがあるため、どれか1つに依存しない):
+ * - 入力から少し経ったら自動的に検索(デバウンス)
+ * - 仮想キーボードの「検索」ボタン(<form>のsubmitイベント)
+ * - 画面上の「検索」ボタンをタップ
+ *
  * @param {{ onSelect: (result: object) => void }} options
  */
 export function openSearchSheet({ onSelect }) {
+  let debounceTimer = null;
+  let requestSeq = 0;
+
   const api = openSheet({
     title: "本を検索",
     leftButton: { label: "閉じる", onClick: (api) => api.close() },
     build: (body, apiRef) => {
       body.innerHTML = `
-        <div style="padding: 0 16px 12px;">
+        <form id="search-form" style="display:flex;gap:8px;padding:0 16px 12px;">
           <input
             type="search"
             id="search-input"
             placeholder="タイトル・著者・ISBN"
-            style="width:100%;padding:10px 12px;border-radius:10px;border:1px solid var(--color-border);
+            autocomplete="off"
+            style="flex:1;min-width:0;padding:10px 12px;border-radius:10px;border:1px solid var(--color-border);
                    background:var(--color-surface);color:var(--color-text);font-size:15px;"
           />
-        </div>
+          <button type="submit" class="btn" style="flex-shrink:0;">検索</button>
+        </form>
         <div id="search-results"></div>
       `;
+      const form = body.querySelector("#search-form");
       const input = body.querySelector("#search-input");
       const resultsEl = body.querySelector("#search-results");
 
-      input.addEventListener("keydown", (e) => {
-        if (e.key === "Enter") {
-          e.preventDefault();
-          runSearch(input.value, resultsEl, apiRef);
-        }
+      form.addEventListener("submit", (e) => {
+        e.preventDefault();
+        clearTimeout(debounceTimer);
+        runSearch(input.value, resultsEl, apiRef);
       });
+
+      input.addEventListener("input", () => {
+        clearTimeout(debounceTimer);
+        const value = input.value;
+        if (!value.trim()) {
+          resultsEl.innerHTML = "";
+          return;
+        }
+        debounceTimer = setTimeout(() => runSearch(value, resultsEl, apiRef), DEBOUNCE_MS);
+      });
+
       input.focus();
     },
   });
@@ -41,13 +66,20 @@ export function openSearchSheet({ onSelect }) {
     const trimmed = query.trim();
     if (!trimmed) return;
 
+    const seq = ++requestSeq;
     resultsEl.innerHTML = `<div class="loading-row"><div class="spinner"></div>検索しています…</div>`;
+
+    let results;
     try {
-      const results = await searchByKeyword(trimmed);
-      renderResults(results, resultsEl, apiRef);
-    } catch {
-      resultsEl.innerHTML = `<div class="notice warning">検索に失敗しました。ネットワーク接続をご確認ください。</div>`;
+      results = await searchByKeyword(trimmed);
+    } catch (err) {
+      if (seq !== requestSeq) return; // 入力中に別の検索が走っていたら結果を捨てる
+      console.warn("Search error:", err);
+      resultsEl.innerHTML = `<div class="notice warning">${searchErrorMessage(err)}</div>`;
+      return;
     }
+    if (seq !== requestSeq) return;
+    renderResults(results, resultsEl, apiRef);
   }
 
   function renderResults(results, resultsEl, apiRef) {
@@ -80,4 +112,12 @@ export function openSearchSheet({ onSelect }) {
   }
 
   return api;
+}
+
+function searchErrorMessage(err) {
+  const detail = `<br /><span style="font-size:11px;opacity:0.7;">(${escapeHTML(err?.name ?? "")}: ${escapeHTML(err?.message ?? "")})</span>`;
+  if (err?.status === 429) {
+    return "Google Books の無料枠の上限に達したようです。しばらく時間をおいてから、もう一度お試しください。" + detail;
+  }
+  return "検索に失敗しました。ネットワーク接続をご確認ください。" + detail;
 }
