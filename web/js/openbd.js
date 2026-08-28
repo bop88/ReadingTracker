@@ -28,6 +28,8 @@ function parseRecord(record) {
   if (!isbn || !title) return null;
 
   const coverImageURL = summary.cover && summary.cover.length > 0 ? summary.cover : null;
+  const seriesName = summary.series && summary.series.length > 0 ? summary.series : null;
+  const seriesVolume = parseVolume(summary.volume);
 
   // ONIX由来のフィールドは発行元によって配列/単一オブジェクトが揺れるため、
   // どちらの形でも配列として扱えるようにする。
@@ -44,6 +46,8 @@ function parseRecord(record) {
     isbn,
     coverImageURL,
     pageCount: null,
+    seriesName,
+    seriesVolume,
     cCode: cCodeEntry?.SubjectCode ?? null,
     ndc: ndcRaw && ndcRaw.length > 0 ? ndcRaw : null,
   };
@@ -53,6 +57,14 @@ function asArray(value) {
   if (Array.isArray(value)) return value;
   if (value && typeof value === "object") return [value];
   return [];
+}
+
+/** summary.volume は "1" のような数字のことが多いが、"上"「①」等の場合もあるため
+ *  数字として解釈できるときだけ採用する(できなければ seriesName だけでグルーピングする) */
+function parseVolume(raw) {
+  if (!raw) return null;
+  const match = String(raw).match(/\d+/);
+  return match ? Number(match[0]) : null;
 }
 
 /** openBDの日付は "yyyyMMdd" / "yyyyMM" / "yyyy" のいずれか。"YYYY-MM-DD" に正規化する */

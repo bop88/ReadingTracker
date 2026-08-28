@@ -44,6 +44,8 @@ async function makeDraft(result, fallbackISBN) {
   book.publishedDate = result.publishedDate;
   book.isbn = result.isbn || fallbackISBN;
   book.pageCount = result.pageCount ?? null;
+  book.seriesName = result.seriesName ?? null;
+  book.seriesVolume = result.seriesVolume ?? null;
   book.coverImageURL = result.coverImageURL;
   book.coverImageBlob = await downloadCoverBlob(result.coverImageURL);
   book.genreLabels = classifyGenre({
