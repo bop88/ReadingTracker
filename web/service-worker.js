@@ -11,7 +11,7 @@
 //
 // CACHE_NAME は互換性が壊れる変更をした時など、キャッシュを丸ごと作り直したい
 // 時にだけ上げればよい(通常の更新は network-first なので上げなくても届く)。
-const CACHE_NAME = "reading-tracker-v3";
+const CACHE_NAME = "reading-tracker-v4";
 
 const APP_SHELL = [
   "./",
@@ -26,6 +26,7 @@ const APP_SHELL = [
   "./js/googleBooks.js",
   "./js/lookupCoordinator.js",
   "./js/scanner.js",
+  "./js/charts.js",
   "./js/utils.js",
   "./js/views/sheet.js",
   "./js/views/bookFormFields.js",
@@ -35,6 +36,7 @@ const APP_SHELL = [
   "./js/views/searchSheet.js",
   "./js/views/shelfView.js",
   "./js/views/filterSheet.js",
+  "./js/views/statsView.js",
   "./js/views/placeholders.js",
   "./vendor/zxing.min.js",
   "./icons/icon-192.png",

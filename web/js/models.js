@@ -55,3 +55,23 @@ export function createBlankBook() {
 export function isCurrentlyReading(book) {
   return Boolean(book.startDate) && !book.finishDate;
 }
+
+export const GoalPeriod = Object.freeze({
+  YEARLY: "yearly",
+  MONTHLY: "monthly",
+});
+
+/**
+ * 読書目標(年間 or 月間の目標冊数)。
+ * @param {{ period: "yearly"|"monthly", year: number, month?: number|null, targetCount: number }} params
+ */
+export function createGoal({ period, year, month = null, targetCount }) {
+  return {
+    id: crypto.randomUUID(),
+    period,
+    year,
+    month, // monthly の場合のみ 1〜12、yearly では null
+    targetCount,
+    createdAt: new Date().toISOString(),
+  };
+}

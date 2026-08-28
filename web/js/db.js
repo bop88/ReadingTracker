@@ -85,3 +85,19 @@ export async function deleteBook(id) {
   tx.objectStore(BOOKS_STORE).delete(id);
   return txDone(tx);
 }
+
+// MARK: - 読書目標
+
+export async function getAllGoals() {
+  const db = await openDB();
+  const tx = db.transaction(GOALS_STORE, "readonly");
+  return requestToPromise(tx.objectStore(GOALS_STORE).getAll());
+}
+
+export async function putGoal(goal) {
+  const db = await openDB();
+  const tx = db.transaction(GOALS_STORE, "readwrite");
+  tx.objectStore(GOALS_STORE).put(goal);
+  await txDone(tx);
+  return goal;
+}

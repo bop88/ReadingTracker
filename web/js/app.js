@@ -1,4 +1,5 @@
 import { renderShelfView } from "./views/shelfView.js";
+import { renderStatsView } from "./views/statsView.js";
 import { renderPlaceholder } from "./views/placeholders.js";
 
 const TABS = {
@@ -8,12 +9,7 @@ const TABS = {
   },
   stats: {
     title: "統計",
-    render: (container) =>
-      renderPlaceholder(container, {
-        icon: "📊",
-        title: "統計",
-        message: "年間/月間の読了数推移、ジャンル別・作者別割合、読書目標の進捗をここに表示します(準備中)。",
-      }),
+    render: (container) => renderStatsView(container),
   },
   trending: {
     title: "話題の本",
