@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 /// 本の登録・編集フォームの中身。`Form { BookEditFormFields(draft: $draft) }` の形で使う。
 /// AddBookView(新規登録)と BookDetailView(編集)の両方から共有される。
@@ -7,6 +8,17 @@ struct BookEditFormFields: View {
 
     var body: some View {
         Section("書誌情報") {
+            if let data = draft.coverImageData, let uiImage = UIImage(data: data) {
+                HStack {
+                    Spacer()
+                    Image(uiImage: uiImage)
+                        .resizable()
+                        .aspectRatio(contentMode: .fit)
+                        .frame(height: 160)
+                        .clipShape(RoundedRectangle(cornerRadius: 8))
+                    Spacer()
+                }
+            }
             TextField("タイトル(必須)", text: $draft.title)
             TextField("著者", text: $draft.author)
             TextField("出版社", text: $draft.publisher)
@@ -37,7 +49,7 @@ struct BookEditFormFields: View {
         Section("ジャンル・タグ") {
             TextField("ジャンルラベル(カンマ区切り)", text: $draft.genreLabelsText)
             TextField("独自タグ(カンマ区切り)", text: $draft.customTagsText)
-            Text("バーコード登録時は Cコード/NDC/キーワードから自動付与されます(未実装)")
+            Text("バーコードスキャン・検索で登録すると、Cコード/NDC/キーワードから自動付与されます")
                 .font(.footnote)
                 .foregroundStyle(.secondary)
         }

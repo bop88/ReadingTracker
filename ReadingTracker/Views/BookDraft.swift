@@ -4,8 +4,8 @@ import Foundation
 ///
 /// 保存前は SwiftData の `Book` をまだ作らずこの struct に値を溜めておき、
 /// バリデーション(タイトル必須・ISBN重複チェック等)を通ってから `Book` へ変換する。
-/// バーコードスキャン/openBD・Google Books連携(フェーズ3)で取得した書誌情報も、
-/// この draft に詰めてプレビュー編集させる想定。
+/// バーコードスキャン/openBD・Google Books連携([BookLookupCoordinator])で取得した
+/// 書誌情報も、この draft に詰めてプレビュー編集させる。
 struct BookDraft {
     var title: String = ""
     var author: String = ""
@@ -31,6 +31,10 @@ struct BookDraft {
     var seriesName: String = ""
     var seriesVolumeText: String = ""
 
+    /// バーコードスキャン/検索で取得した表紙画像(openBD/Google Books連携用)
+    var coverImageURL: String?
+    var coverImageData: Data?
+
     static func fromScratch() -> BookDraft { BookDraft() }
 
     /// 既存の Book から draft を起こす(将来、編集フローでも再利用できるように)
@@ -53,6 +57,8 @@ struct BookDraft {
         readingProgressPercent = book.readingProgressPercent
         seriesName = book.seriesName ?? ""
         seriesVolumeText = book.seriesVolume.map(String.init) ?? ""
+        coverImageURL = book.coverImageURL
+        coverImageData = book.coverImageData
     }
 
     private static func splitTags(_ text: String) -> [String] {
@@ -79,6 +85,8 @@ struct BookDraft {
             author: author.trimmingCharacters(in: .whitespacesAndNewlines),
             publisher: publisher.trimmingCharacters(in: .whitespacesAndNewlines),
             publishedDate: publishedDate,
+            coverImageURL: coverImageURL,
+            coverImageData: coverImageData,
             isbn: trimmedISBN,
             status: status,
             genreLabels: genreLabels,
@@ -100,6 +108,8 @@ struct BookDraft {
         book.author = author.trimmingCharacters(in: .whitespacesAndNewlines)
         book.publisher = publisher.trimmingCharacters(in: .whitespacesAndNewlines)
         book.publishedDate = publishedDate
+        book.coverImageURL = coverImageURL
+        book.coverImageData = coverImageData
         book.isbn = trimmedISBN
         book.status = status
         book.genreLabels = genreLabels
