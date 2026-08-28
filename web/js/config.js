@@ -18,4 +18,4 @@
 //
 // 未設定(空文字のまま)でも動作するが、その場合は上記の共有の無料枠を使うため、
 // 「検索に失敗しました」が頻発する可能性がある。
-export const GOOGLE_BOOKS_API_KEY = "";
+export const GOOGLE_BOOKS_API_KEY = "AIzaSyAiouXtHWe3eNM0n-otD4F8RGHIwkP2z3U";
