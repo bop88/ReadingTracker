@@ -1,6 +1,11 @@
 // Google Books API(無料枠・APIキー無しでも利用可)を使った書誌情報検索。
 // - openBD でヒットしなかった場合のフォールバックとして ISBN 検索に使う
 // - openBD には全文検索が無いため、タイトル・著者名での手動検索にも使う
+//
+// APIキーを設定していれば付与する([config.js]参照)。未設定の場合は匿名の
+// 共有割り当てを使うため、HTTP 429(無料枠の上限)になりやすい。
+
+import { GOOGLE_BOOKS_API_KEY } from "./config.js";
 
 const BASE_URL = "https://www.googleapis.com/books/v1/volumes";
 
@@ -17,6 +22,9 @@ export async function searchByKeyword(keyword) {
 
 async function search(query) {
   const params = new URLSearchParams({ q: query, maxResults: "20", country: "JP" });
+  if (GOOGLE_BOOKS_API_KEY) {
+    params.set("key", GOOGLE_BOOKS_API_KEY);
+  }
   const response = await fetch(`${BASE_URL}?${params.toString()}`);
   if (!response.ok) {
     const err = new Error(`Google Books request failed: ${response.status}`);

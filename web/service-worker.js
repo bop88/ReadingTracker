@@ -11,7 +11,7 @@
 //
 // CACHE_NAME は互換性が壊れる変更をした時など、キャッシュを丸ごと作り直したい
 // 時にだけ上げればよい(通常の更新は network-first なので上げなくても届く)。
-const CACHE_NAME = "reading-tracker-v4";
+const CACHE_NAME = "reading-tracker-v5";
 
 const APP_SHELL = [
   "./",
@@ -19,6 +19,7 @@ const APP_SHELL = [
   "./manifest.webmanifest",
   "./css/styles.css",
   "./js/app.js",
+  "./js/config.js",
   "./js/db.js",
   "./js/models.js",
   "./js/genreClassifier.js",

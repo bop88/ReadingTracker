@@ -5,7 +5,7 @@
 // そのまま渡す想定)。値の反映はinput/change/rangeイベントで随時行う。
 
 import { ReadingStatus, statusLabel } from "../models.js";
-import { splitTags } from "../utils.js";
+import { getAllBooks } from "../db.js";
 
 const STATUS_OPTIONS = [ReadingStatus.WANT_TO_READ, ReadingStatus.STACKED, ReadingStatus.READ];
 
@@ -56,16 +56,22 @@ export function renderFormFields(container, book) {
     </div>
 
     <div class="form-section">
-      <div class="form-section-title">ジャンル・タグ</div>
-      <div class="form-row">
-        <label for="f-genres">ジャンル</label>
-        <input type="text" id="f-genres" placeholder="カンマ区切り" />
-      </div>
-      <div class="form-row">
-        <label for="f-tags">独自タグ</label>
-        <input type="text" id="f-tags" placeholder="カンマ区切り" />
+      <div class="form-section-title">ジャンル</div>
+      <div class="chip-picker" id="genre-chip-picker"></div>
+      <div class="chip-add-row">
+        <input type="text" id="genre-new-input" placeholder="新しいジャンルを追加" />
+        <button type="button" id="genre-add-btn">追加</button>
       </div>
       <div class="helper-text">バーコードスキャン・検索で登録すると、Cコード/NDC/キーワードから自動付与されます</div>
+    </div>
+
+    <div class="form-section">
+      <div class="form-section-title">独自タグ</div>
+      <div class="chip-picker" id="tag-chip-picker"></div>
+      <div class="chip-add-row">
+        <input type="text" id="tag-new-input" placeholder="新しいタグを追加" />
+        <button type="button" id="tag-add-btn">追加</button>
+      </div>
     </div>
 
     <div class="form-section">
@@ -119,6 +125,7 @@ export function renderFormFields(container, book) {
   renderCoverPreview(container, book);
   bindValues(container, book);
   bindListeners(container, book);
+  setUpLabelChips(container, book); // 既存ラベル一覧の取得を待つため非同期(完了後にチップが表示される)
 }
 
 function renderCoverPreview(container, book) {
@@ -139,8 +146,6 @@ function bindValues(container, book) {
   container.querySelector("#f-publishedDate").value = book.publishedDate ?? "";
   container.querySelector("#f-status").value = book.status;
   container.querySelector("#f-rating").value = String(book.rating ?? 0);
-  container.querySelector("#f-genres").value = (book.genreLabels ?? []).join(", ");
-  container.querySelector("#f-tags").value = (book.customTags ?? []).join(", ");
   container.querySelector("#f-startDate").value = book.startDate ?? "";
   container.querySelector("#f-finishDate").value = book.finishDate ?? "";
   container.querySelector("#f-pageCount").value = book.pageCount ?? "";
@@ -161,8 +166,6 @@ function bindListeners(container, book) {
   on("#f-publishedDate", "input", (e) => (book.publishedDate = e.target.value || null));
   on("#f-status", "change", (e) => (book.status = e.target.value));
   on("#f-rating", "change", (e) => (book.rating = Number(e.target.value)));
-  on("#f-genres", "input", (e) => (book.genreLabels = splitTags(e.target.value)));
-  on("#f-tags", "input", (e) => (book.customTags = splitTags(e.target.value)));
   on("#f-startDate", "input", (e) => (book.startDate = e.target.value || null));
   on("#f-finishDate", "input", (e) => (book.finishDate = e.target.value || null));
   on("#f-pageCount", "input", (e) => (book.pageCount = e.target.value ? Number(e.target.value) : null));
@@ -177,4 +180,93 @@ function bindListeners(container, book) {
 
 export function isValid(book) {
   return Boolean(book.title && book.title.trim().length > 0);
+}
+
+// MARK: - ジャンル・タグのチップ選択(ステータス・評価と同じ「タップして選ぶ」方式)
+
+/** 登録済みの全ての本からジャンルラベル・独自タグの一覧を集めて、チップとして選べるようにする */
+async function setUpLabelChips(container, book) {
+  const books = await getAllBooks();
+  const knownGenres = collectLabels(books, "genreLabels");
+  const knownTags = collectLabels(books, "customTags");
+
+  // renderFormFields が呼ばれた後に別のフォームに差し替わっている可能性があるため、
+  // 対象のコンテナがまだDOMに残っている場合のみ描画する
+  if (!container.isConnected) return;
+
+  setUpChipField(container, {
+    pickerId: "#genre-chip-picker",
+    inputId: "#genre-new-input",
+    addButtonId: "#genre-add-btn",
+    known: knownGenres,
+    book,
+    field: "genreLabels",
+  });
+  setUpChipField(container, {
+    pickerId: "#tag-chip-picker",
+    inputId: "#tag-new-input",
+    addButtonId: "#tag-add-btn",
+    known: knownTags,
+    book,
+    field: "customTags",
+  });
+}
+
+function collectLabels(books, field) {
+  const set = new Set();
+  for (const book of books) {
+    for (const label of book[field] ?? []) set.add(label);
+  }
+  return [...set].sort((a, b) => a.localeCompare(b, "ja"));
+}
+
+function setUpChipField(container, { pickerId, inputId, addButtonId, known, book, field }) {
+  const picker = container.querySelector(pickerId);
+  renderChipPicker(picker, known, book, field);
+
+  const input = container.querySelector(inputId);
+  const addButton = container.querySelector(addButtonId);
+  const addFromInput = () => {
+    const value = input.value.trim();
+    if (!value) return;
+    const current = book[field] ?? [];
+    if (!current.includes(value)) {
+      book[field] = [...current, value];
+      if (!known.includes(value)) known.push(value); // このフォーム内で追加したラベルもすぐチップとして選べるようにする
+    }
+    input.value = "";
+    renderChipPicker(picker, known, book, field);
+  };
+  addButton.addEventListener("click", addFromInput);
+  input.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      addFromInput();
+    }
+  });
+}
+
+function renderChipPicker(picker, known, book, field) {
+  const selected = book[field] ?? [];
+  // 既知のラベル + 今この本に付いているが一覧に無いラベル(自動判定で新規に付いた場合など)をまとめる
+  const allLabels = [...new Set([...known, ...selected])].sort((a, b) => a.localeCompare(b, "ja"));
+
+  if (allLabels.length === 0) {
+    picker.innerHTML = `<span class="helper-text" style="padding:0;">まだ候補がありません。下の欄から追加してください</span>`;
+    return;
+  }
+
+  picker.innerHTML = "";
+  for (const label of allLabels) {
+    const chip = document.createElement("button");
+    chip.type = "button";
+    chip.className = "chip" + (selected.includes(label) ? " selected" : "");
+    chip.textContent = label;
+    chip.addEventListener("click", () => {
+      const current = book[field] ?? [];
+      book[field] = current.includes(label) ? current.filter((l) => l !== label) : [...current, label];
+      renderChipPicker(picker, known, book, field);
+    });
+    picker.appendChild(chip);
+  }
 }
