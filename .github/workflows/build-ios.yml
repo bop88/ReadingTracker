@@ -1,13 +1,25 @@
-name: Build Unsigned IPA
+name: Build Unsigned IPA (archived iOS app)
+
+# このワークフローは ios-app/ 配下(無料Apple IDでのSideloadly配布を前提に作った
+# ネイティブiOS版)を変更したときだけ動く。現在アプリの主開発は web/ の PWA版に
+# 移行しており、この native 版はアーカイブとして残しているだけなので普段は動かない。
+# 再開する場合(例: 有料Apple Developer Programに加入して7日制限を解消するなど)は
+# ios-app/README.md を参照。
 
 on:
   push:
     branches: ["**"]
+    paths:
+      - "ios-app/**"
+      - ".github/workflows/build-ios.yml"
   workflow_dispatch: {}
 
 jobs:
   build:
     runs-on: macos-latest
+    defaults:
+      run:
+        working-directory: ios-app
 
     steps:
       - name: Checkout repository
@@ -54,5 +66,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: ReadingTracker-unsigned-ipa
-          path: ReadingTracker.ipa
+          path: ios-app/ReadingTracker.ipa
           retention-days: 14

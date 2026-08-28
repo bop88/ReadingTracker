@@ -1,18 +1,17 @@
-# XcodeGen-generated project (regenerated via `xcodegen generate`)
-*.xcodeproj/
-Generated-Info.plist
-
-# Xcode / build products
-build/
-DerivedData/
-*.ipa
-Payload/
-xcuserdata/
-*.xcuserstate
-
 # macOS
 .DS_Store
 
-# Swift Package Manager
-.swiftpm/
-.build/
+# --- ios-app/ (archived native iOS build) ---
+ios-app/**/*.xcodeproj/
+ios-app/Generated-Info.plist
+ios-app/build/
+ios-app/DerivedData/
+ios-app/*.ipa
+ios-app/Payload/
+ios-app/**/xcuserdata/
+ios-app/**/*.xcuserstate
+ios-app/.swiftpm/
+ios-app/.build/
+
+# --- web/ (PWA) ---
+web/node_modules/
