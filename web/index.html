@@ -54,6 +54,15 @@
           console.warn("Service worker registration failed:", err);
         });
       });
+
+      // 新しいService Workerが有効化されてページの制御が切り替わったら、
+      // 開きっぱなしのタブでも最新のJS/CSSが読み込まれるよう一度だけ再読み込みする。
+      let hasReloadedForUpdate = false;
+      navigator.serviceWorker.addEventListener("controllerchange", () => {
+        if (hasReloadedForUpdate) return;
+        hasReloadedForUpdate = true;
+        window.location.reload();
+      });
     }
   </script>
 </body>

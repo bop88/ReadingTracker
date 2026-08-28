@@ -82,7 +82,8 @@
 web/
 ├── index.html              # アプリ本体(エントリーポイント)
 ├── manifest.webmanifest    # PWAマニフェスト(アイコン・名前など)
-├── service-worker.js       # オフラインキャッシュ
+├── service-worker.js       # オフラインキャッシュ(ネットワーク優先。オンライン時は
+│                           # 常に最新を取得し、オフライン時のみキャッシュを使う)
 ├── css/styles.css
 ├── js/
 │   ├── app.js               # タブ切り替えなどアプリの起点

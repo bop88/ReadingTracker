@@ -2,8 +2,16 @@
 // 編集ができるようにする。openBD・Google Books・楽天ブックス・カーリルなど
 // 外部APIへのリクエストはキャッシュ対象外(素通し)にしており、それらの機能は
 // ネットワーク接続時のみ動作する。
-
-const CACHE_NAME = "reading-tracker-v1";
+//
+// キャッシュ戦略は「ネットワーク優先(オフライン時のみキャッシュへフォールバック)」。
+// 以前は cache-first にしていたが、それだと一度キャッシュされたファイルは
+// デプロイして更新しても永久に古いまま配信され続けてしまう(SW自体の内容が
+// 変わらない限りブラウザがSWの更新自体を検知しないため)。開発中で頻繁に
+// 更新するアプリなので、オンライン時は常に最新を取りに行く方針にしている。
+//
+// CACHE_NAME は互換性が壊れる変更をした時など、キャッシュを丸ごと作り直したい
+// 時にだけ上げればよい(通常の更新は network-first なので上げなくても届く)。
+const CACHE_NAME = "reading-tracker-v2";
 
 const APP_SHELL = [
   "./",
@@ -26,6 +34,7 @@ const APP_SHELL = [
   "./js/views/scanSheet.js",
   "./js/views/searchSheet.js",
   "./js/views/shelfView.js",
+  "./js/views/filterSheet.js",
   "./js/views/placeholders.js",
   "./vendor/zxing.min.js",
   "./icons/icon-192.png",
@@ -56,17 +65,14 @@ self.addEventListener("fetch", (event) => {
   if (event.request.method !== "GET") return;
 
   event.respondWith(
-    caches.match(event.request).then((cached) => {
-      const networkFetch = fetch(event.request)
-        .then((response) => {
-          if (response.ok) {
-            const clone = response.clone();
-            caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
-          }
-          return response;
-        })
-        .catch(() => cached);
-      return cached || networkFetch;
-    })
+    fetch(event.request)
+      .then((response) => {
+        if (response.ok) {
+          const clone = response.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
+        }
+        return response;
+      })
+      .catch(() => caches.match(event.request))
   );
 });
