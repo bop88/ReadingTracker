@@ -11,7 +11,7 @@
 //
 // CACHE_NAME は互換性が壊れる変更をした時など、キャッシュを丸ごと作り直したい
 // 時にだけ上げればよい(通常の更新は network-first なので上げなくても届く)。
-const CACHE_NAME = "reading-tracker-v2";
+const CACHE_NAME = "reading-tracker-v3";
 
 const APP_SHELL = [
   "./",
@@ -43,7 +43,24 @@ const APP_SHELL = [
 ];
 
 self.addEventListener("install", (event) => {
-  event.waitUntil(caches.open(CACHE_NAME).then((cache) => cache.addAll(APP_SHELL)));
+  // cache.addAll() は内部でブラウザの通常のfetchを使うため、ここでも
+  // cache: "no-store" を効かせるために1件ずつ手動でfetch+putする
+  // (addAllにRequestオブジェクトの配列を渡しても同様に効かせられるが、
+  // 1件失敗した時にどのURLかが分かりやすいようループにしている)。
+  event.waitUntil(
+    caches.open(CACHE_NAME).then((cache) =>
+      Promise.all(
+        APP_SHELL.map(async (url) => {
+          try {
+            const response = await fetch(url, { cache: "no-store" });
+            if (response.ok) await cache.put(url, response);
+          } catch (err) {
+            console.warn("Precache failed for", url, err);
+          }
+        })
+      )
+    )
+  );
   self.skipWaiting();
 });
 
@@ -64,8 +81,12 @@ self.addEventListener("fetch", (event) => {
   if (url.origin !== self.location.origin) return;
   if (event.request.method !== "GET") return;
 
+  // cache: "no-store" が重要: 指定しないと、SWが「ネットワークから取る」つもりでも
+  // ブラウザの通常のHTTPキャッシュ(GitHub PagesのCache-Controlヘッダ)に
+  // 素通りされて古いレスポンスが返ってくることがあり、network-first の意味が
+  // なくなってしまう。
   event.respondWith(
-    fetch(event.request)
+    fetch(event.request, { cache: "no-store" })
       .then((response) => {
         if (response.ok) {
           const clone = response.clone();
